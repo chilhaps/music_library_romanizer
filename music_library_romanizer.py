@@ -61,8 +61,12 @@ def transliterate_filenames(file_path, uroman_consructor):
 
     if song_filename != processed_song_filename:
         new_file_path = os.path.join(song_directory, processed_song_filename + song_extension)
-        os.rename(file_path, new_file_path)
-        print(f"Renamed file from '{file_path}' to '{new_file_path}'")
+
+        try:
+            os.rename(file_path, new_file_path)
+            print(f"Renamed file from '{file_path}' to '{new_file_path}'")
+        except Exception as e: 
+            print(f"Error renaming file '{file_path}': {e}")
 
 # Function to transliterate directory names
 def transliterate_directory_names(root_path, uroman_consructor):
