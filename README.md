@@ -5,6 +5,7 @@ A Python program that romanizes all subdirectory names, file names, and relevant
 Ensure that your Python environment is installed and working, then run the following:
 
 ```
+git clone https://github.com/chilhaps/music_library_romanizer.git
 pip install -r requirements.txt
 python music_library_romanizer.py
 ```
