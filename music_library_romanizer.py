@@ -29,8 +29,11 @@ def process_string(value, uroman_consructor, replace_forbidden=False):
 def find_music_files(path):
     music_files = []
 
-    for ext in ('*.mp3', '*.flac', '*.wav', '*.m4a'):
-        music_files.extend(glob.glob(os.path.join(path, '**', ext), recursive=True))
+    try:
+        for ext in ('*.mp3', '*.flac', '*.wav', '*.m4a'):
+            music_files.extend(glob.glob(os.path.join(path, '**', ext), recursive=True))
+    except Exception as e:
+        print(f"Error finding music files in path '{path}': {e}")
 
     return music_files
 
@@ -79,7 +82,13 @@ def transliterate_directory_names(root_path, uroman_consructor):
 
 def main():
     uroman_consructor = uroman.Uroman()
-    music_library_path = r'{}'.format(input("Enter the path to your music library: ").strip())
+
+    try:
+        music_library_path = r'{}'.format(input("Enter the path to your music library: ").strip())
+    except Exception as e:
+        print(f"Error reading input: {e}")
+        return
+
     music_files = find_music_files(music_library_path)
 
     for music_file in music_files:
