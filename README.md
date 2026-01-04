@@ -1,5 +1,5 @@
 # music_library_romanizer
-A Python program that romanizes all subdirectory names, file names, and relevant tag values in a directorys.
+A Python program that romanizes all subdirectory names, file names, and relevant tag values in a directory.
 
 ## Installation and Usage
 Ensure that your Python environment is installed and working, then run the following:
