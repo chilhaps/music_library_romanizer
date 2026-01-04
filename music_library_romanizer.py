@@ -1,47 +1,63 @@
 import os
-import glob
 import music_tag
 import uroman
 
 FORBIDDEN_CHARACTERS = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
 
-# Function to process and romanize a string if string contains CJK characters
-def process_string(value, uroman_consructor, replace_forbidden=False):
-    try:
-        romanized_value = uroman_consructor.romanize_string(value)
+# Function to find paths, directories, and files in the given root path
+def scan_directory(root_path):
+    directory_paths = []
+    file_paths = []
 
-        if value != romanized_value:
-            romanized_value = romanized_value.title()
+    for dirpath, dirnames, filenames in os.walk(root_path, topdown=False):
+        directory_paths.extend([os.path.join(dirpath, dirname) for dirname in dirnames])
+        file_paths.extend([os.path.join(dirpath, filename) for filename in filenames])
+
+    return directory_paths, file_paths
+
+# Function to process and romanize a string if string contains CJK characters
+def process_string(str, uroman_consructor, replace_forbidden=False):
+    try:
+        romanized_str = uroman_consructor.romanize_string(str)
+
+        if str != romanized_str:
+            romanized_str = ''
+            temp = ''
+            
+            for char in str:
+                romanized_char = uroman_consructor.romanize_string(char)
+
+                if char == romanized_char:
+                    if len(temp) > 0:
+                        temp = uroman_consructor.romanize_string(temp)
+                        romanized_str += temp.title().strip()
+                        temp = ''
+
+                    romanized_str += char
+                else:
+                    temp += char
+            
+            if len(temp) > 0:
+                temp = uroman_consructor.romanize_string(temp)
+                romanized_str += temp.title().strip()
 
             if replace_forbidden:
-                for char in FORBIDDEN_CHARACTERS:
-                    romanized_value = romanized_value.replace(char, ' - ')
+                for forbidden_char in FORBIDDEN_CHARACTERS:
+                    romanized_str = romanized_str.replace(forbidden_char, '-')
 
-            return romanized_value
-        
-        return value
+            return romanized_str
+
+        return str
     
     except Exception as e:
-        print(f"Error processing value '{value}': {e}")
-        return value
+        print(f"Error processing value '{str}': {e}")
+        return str
 
-# Function to find all music files in the given path
-def find_music_files(path):
-    music_files = []
+# Function to transliterate tags with string values in a music file
+def transliterate_tags(file_path, uroman_consructor):
+    song = music_tag.load_file(file_path)
+    print(f"Processing file: {file_path}")
 
-    try:
-        for ext in ('*.mp3', '*.flac', '*.wav', '*.m4a'):
-            music_files.extend(glob.glob(os.path.join(path, '**', ext), recursive=True))
-    except Exception as e:
-        print(f"Error finding music files in path '{path}': {e}")
-
-    return music_files
-
-# Function to transliterate necessary tags in a music file
-def transliterate_tags(song_file_path, uroman_consructor):
-    song = music_tag.load_file(song_file_path)
-    print(f"Processing file: {song_file_path}")
-    
     for tag in ['album', 'albumartist', 'artist', 'composer', 'tracktitle']:
         if song[tag]:
             value = str(song[tag])
@@ -53,8 +69,8 @@ def transliterate_tags(song_file_path, uroman_consructor):
             
     song.save()
 
-# Function to transliterate the filename of a music file
-def transliterate_filenames(file_path, uroman_consructor):
+# Function to transliterate filenames
+def transliterate_filename(file_path, uroman_consructor):
     song_filename, song_extension = os.path.splitext(os.path.basename(file_path))
     song_directory = os.path.dirname(file_path)
     processed_song_filename = process_string(song_filename, uroman_consructor, replace_forbidden=True)
@@ -69,20 +85,18 @@ def transliterate_filenames(file_path, uroman_consructor):
             print(f"Error renaming file '{file_path}': {e}")
 
 # Function to transliterate directory names
-def transliterate_directory_names(root_path, uroman_consructor):
-    for dirpath, dirnames, filenames in os.walk(root_path, topdown=False):
-        for dirname in dirnames:
-            processed_dirname = process_string(dirname, uroman_consructor, replace_forbidden=True)
+def transliterate_directory_name(directory_path, uroman_consructor):
+    directory = os.path.basename(directory_path)
+    processed_dirname = process_string(directory, uroman_consructor, replace_forbidden=True)
 
-            if dirname != processed_dirname:
-                old_dir_path = os.path.join(dirpath, dirname)
-                new_dir_path = os.path.join(dirpath, processed_dirname)
-
-                try:
-                    os.rename(old_dir_path, new_dir_path)
-                    print(f"Renamed directory from '{old_dir_path}' to '{new_dir_path}'")
-                except Exception as e:
-                    print(f"Error renaming directory '{old_dir_path}': {e}")
+    if directory != processed_dirname:
+        old_dir_path = os.path.join(os.path.dirname(directory_path), directory)
+        new_dir_path = os.path.join(os.path.dirname(directory_path), processed_dirname)
+        try:
+            os.rename(old_dir_path, new_dir_path)
+            print(f"Renamed directory from '{old_dir_path}' to '{new_dir_path}'")
+        except Exception as e:
+            print(f"Error renaming directory '{old_dir_path}': {e}")
 
 def main():
     uroman_consructor = uroman.Uroman()
@@ -93,13 +107,18 @@ def main():
         print(f"Error reading input: {e}")
         return
 
-    music_files = find_music_files(music_library_path)
+    directory_paths, file_paths = scan_directory(music_library_path)
+    
+    for file_path in file_paths:
+        extension = os.path.splitext(file_path)[1]
 
-    for music_file in music_files:
-        transliterate_tags(music_file, uroman_consructor)
-        transliterate_filenames(music_file, uroman_consructor)
+        if extension.lower() in ['.mp3', '.flac', '.wav', '.m4a']:
+            transliterate_tags(file_path, uroman_consructor)
+        
+        transliterate_filename(file_path, uroman_consructor)
 
-    transliterate_directory_names(music_library_path, uroman_consructor)
+    for directory_path in directory_paths:
+        transliterate_directory_name(directory_path, uroman_consructor)
 
 if __name__ == "__main__":
     main()
